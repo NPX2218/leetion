@@ -1,0 +1,12 @@
+{
+  "name": "leetion",
+  "version": "1.0.0",
+  "description": "**LeetCode → Notion** — Save your LeetCode problems and solutions directly to your Notion database with one click.",
+  "main": "background.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
