@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Welcome to Leetion - Setup</title>
+    <link rel="stylesheet" href="onboarding.css" />
+  </head>
+  <body>
+    <div class="onboarding-container">
+      <!-- Header -->
+      <header class="onboarding-header">
+        <img  src="./icons/icon128.png"/ width="40" height="40">
+        <span style="padding-left: 10px;">Leetion</span>
+        </div>
+      </header>
+
+      <!-- Main Content -->
+      <main class="onboarding-main">
+        <!-- Welcome Section -->
+        <div class="welcome-section">
+          <h1>Welcome to Leetion 👋</h1>
+          <p>Let's connect your Notion workspace in just a few steps</p>
+        </div>
+
+        <!-- Video Section -->
+      <!-- Video Section -->
+<!-- Video Section -->
+  <div class="video-section">
+<a href="https://youtu.be/D6I_ZZtsMN8" target="_blank" class="video-link">
+  <div class="video-thumbnail">
+    <img src="https://img.youtube.com/vi/D6I_ZZtsMN8/maxresdefault.jpg" alt="Setup Tutorial" />
+    <div class="play-overlay">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10" fill="rgba(0,0,0,0.7)" />
+        <polygon points="10,8 16,12 10,16" fill="currentColor" stroke="none" />
+      </svg>
+    </div>
+  </div>
+  <span class="video-caption">Watch Setup Tutorial</span>
+</a>
+  </div>
+
+        <!-- Progress Steps -->
+        <div class="progress-container">
+          <div class="progress-steps">
+            <div class="progress-step active" data-step="1">
+              <div class="step-dot">1</div>
+              <span>Create Integration</span>
+            </div>
+            <div class="progress-line" id="line-1-2"></div>
+            <div class="progress-step" data-step="2">
+              <div class="step-dot">2</div>
+              <span>Duplicate Template</span>
+            </div>
+            <div class="progress-line" id="line-2-3"></div>
+            <div class="progress-step" data-step="3">
+              <div class="step-dot">3</div>
+              <span>Connect & Finish</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step Cards -->
+        <div class="steps-container">
+          <!-- Step 1: Create Integration -->
+          <div class="step-card active" id="step-1">
+            <div class="step-header">
+              <div class="step-number">Step 1</div>
+              <h2>Create a Notion Integration</h2>
+            </div>
+            <div class="step-content">
+              <p>
+                First, we need to create a Notion integration that allows
+                Leetion to save problems to your workspace.
+              </p>
+
+              <div class="instruction-list">
+                <div class="instruction-item">
+                  <span class="instruction-number">1</span>
+                  <span
+                    >Click the button below to open Notion Integrations</span
+                  >
+                </div>
+                <div class="instruction-item">
+                  <span class="instruction-number">2</span>
+                  <span>Click <strong>"New integration"</strong></span>
+                </div>
+                <div class="instruction-item">
+                  <span class="instruction-number">3</span>
+                  <span
+                    >Name it <strong>"Leetion"</strong> and select your
+                    workspace</span
+                  >
+                </div>
+                <div class="instruction-item">
+                  <span class="instruction-number">4</span>
+                  <span
+                    >Click <strong>"Save"</strong>, then copy the
+                    <strong>"Internal Integration Secret"</strong></span
+                  >
+                </div>
+              </div>
+
+              <button style="width: 100%; justify-content: center;" class="btn-action" id="btn-open-integrations">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"
+                  />
+                  <polyline points="15,3 21,3 21,9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+                Open Notion Integrations
+              </button>
+
+              <div class="input-group">
+                <label for="input-api-key">Paste your API Key</label>
+                <div class="input-wrapper">
+                  <input
+                    type="password"
+                    id="input-api-key"
+                    placeholder="ntn_xxxxxxxxxxxxxxxxxxxxxxxx"
+                    autocomplete="off"
+                  />
+                  <button
+                    class="btn-toggle"
+                    id="btn-toggle-key"
+                    title="Show/Hide"
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  </button>
+                </div>
+                <div class="input-status" id="api-key-status"></div>
+              </div>
+            </div>
+            <div class="step-footer">
+              <button class="btn-primary" id="btn-next-1" disabled>
+                Continue
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 2: Duplicate Template -->
+          <div class="step-card" id="step-2">
+            <div class="step-header">
+              <div class="step-number">Step 2</div>
+              <h2>Duplicate the Template Database</h2>
+            </div>
+            <div class="step-content">
+              <p>
+                Now let's create your personal LeetCode tracking database from
+                our template.
+              </p>
+
+              <div class="instruction-list">
+                <div class="instruction-item">
+                  <span class="instruction-number">1</span>
+                  <span>Click the button below to open the template</span>
+                </div>
+                <div class="instruction-item">
+                  <span class="instruction-number">2</span>
+                  <span
+                    >Click <strong>"Duplicate"</strong> in the top right
+                    corner</span
+                  >
+                </div>
+                <div class="instruction-item">
+                  <span class="instruction-number">3</span>
+                  <span
+                    >After duplicating,
+                    <strong>open your new database</strong> from the
+                    sidebar</span
+                  >
+                </div>
+                <div class="instruction-item highlight">
+                  <span class="instruction-number">✨</span>
+                  <span
+                    >Click <strong>"Detect Database"</strong> below when you're
+                    on your database page!</span
+                  >
+                </div>
+              </div>
+
+              <button style="width: 100%; justify-content: center;" class="btn-action" id="btn-open-template">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"
+                  />
+                  <polyline points="15,3 21,3 21,9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+                Open Notion Template
+              </button>
+
+              <button style="width: 100%; justify-content: center;" class="btn-action btn-detect" id="btn-detect-database">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="M21 21l-4.35-4.35" />
+                </svg>
+                Detect Database from Current Tab
+              </button>
+
+         <div class="detection-status hidden" id="detection-status">
+  <div class="detection-waiting hidden" id="detection-waiting">
+    <div class="spinner"></div>
+    <span>Detecting database...</span>
+  </div>
+  <div class="detection-success hidden" id="detection-success">
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+    >
+      <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+      <polyline points="22,4 12,14.01 9,11.01" />
+    </svg>
+    <div class="detection-info">
+      <span class="detection-label">Database ID Detected!</span>
+      <span class="detection-id" id="detected-db-id">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</span>
+    </div>
+  </div>
+  <div class="detection-error hidden" id="detection-error">
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="15" y1="9" x2="9" y2="15" />
+      <line x1="9" y1="9" x2="15" y2="15" />
+    </svg>
+    <span>Not on a Notion database page. Please open your duplicated database first.</span>
+  </div>
+</div>
+
+              <div class="input-group manual-input">
+                <label for="input-database-id"
+                  >Or paste Database ID manually</label
+                >
+                <input
+                  type="text"
+                  id="input-database-id"
+                  placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                  autocomplete="off"
+                />
+                <p class="input-hint">
+                  Found in your database URL after notion.so/username/
+                </p>
+              </div>
+            </div>
+            <div class="step-footer">
+              <button class="btn-secondary" id="btn-back-2">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+                Back
+              </button>
+              <button class="btn-primary" id="btn-next-2" disabled>
+                Continue
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 3: Connect Integration -->
+          <div class="step-card" id="step-3">
+            <div class="step-header">
+              <div class="step-number">Step 3</div>
+              <h2>Connect Integration to Database</h2>
+            </div>
+            <div class="step-content">
+              <p>
+                Final step! Connect your Leetion integration to the database so
+                it can save your problems.
+              </p>
+
+              <div class="instruction-list">
+                <div class="instruction-item">
+                  <span class="instruction-number">1</span>
+                  <span>Open your duplicated database in Notion</span>
+                </div>
+                <div class="instruction-item">
+                  <span class="instruction-number">2</span>
+                  <span
+                    >Click the <strong>"•••"</strong> menu in the top
+                    right</span
+                  >
+                </div>
+                <div class="instruction-item">
+                  <span class="instruction-number">3</span>
+                  <span
+                    >Click <strong>"Connections"</strong> →
+                    <strong>"Add connections"</strong></span
+                  >
+                </div>
+                <div class="instruction-item">
+                  <span class="instruction-number">4</span>
+                  <span>Search for and select <strong>"Leetion"</strong></span>
+                </div>
+              </div>
+
+             <div class="connection-visual">
+  <div class="visual-step">
+    <div class="visual-box">
+      <div class="visual-header">
+        <span class="dots">•••</span>
+      </div>
+      <div class="visual-content">
+        <span>Click the menu</span>
+      </div>
+    </div>
+  </div>
+  <svg
+    class="visual-arrow"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+  >
+    <path d="M9 18l6-6-6-6" />
+  </svg>
+  <div class="visual-step">
+    <div class="visual-box">
+      <div class="visual-menu">
+        <div class="menu-item">
+          <span>Connections</span>
+          <span class="arrow">›</span>
+        </div>
+        <div class="menu-item highlight">
+          <span>+ Add connections</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <svg
+    class="visual-arrow"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+  >
+    <path d="M9 18l6-6-6-6" />
+  </svg>
+  <div class="visual-step">
+    <div class="visual-box">
+      <div class="visual-search">
+        <span class="search-text">Search: Leetion</span>
+        <div class="search-result">
+          <div class="result-icon">L</div>
+          <span>Leetion</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+              <div class="verify-section">
+                <button style="width: 100%; justify-content: center;" class="btn-action" id="btn-verify">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+                    <polyline points="22,4 12,14.01 9,11.01" />
+                  </svg>
+                  Verify Connection
+                </button>
+                <div class="verify-status" id="verify-status"></div>
+              </div>
+            </div>
+            <div class="step-footer">
+              <button class="btn-secondary" id="btn-back-3">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+                Back
+              </button>
+              <button class="btn-primary" id="btn-finish" disabled>
+                Finish Setup
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <polyline points="20,6 9,17 4,12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Success Screen -->
+          <div class="step-card success-card hidden" id="step-success">
+            <div class="success-content">
+              <div class="success-icon">
+                <svg
+                  width="64"
+                  height="64"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                >
+                  <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+                  <polyline points="22,4 12,14.01 9,11.01" />
+                </svg>
+              </div>
+              <h2>You're all set! 🎉</h2>
+              <p>
+                Leetion is now connected to your Notion workspace. Start solving
+                LeetCode problems and save them with one click!
+              </p>
+
+              <div class="success-tips">
+                <h3>Quick Tips:</h3>
+                <ul>
+                  <li>
+                    Open any LeetCode problem and click the Leetion extension
+                  </li>
+                  <li>Your code and problem details are auto-captured</li>
+                  <li>Use the drawing tool to sketch out solutions</li>
+                  <li>Track your progress with spaced repetition</li>
+                </ul>
+              </div>
+
+              <button class="btn-primary btn-large" id="btn-start">
+                Start Using Leetion
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Footer -->
+      <footer class="onboarding-footer">
+        <p>
+          Need help?
+          <a
+            href="https://github.com/NPX2218/leetion/issues"
+            target="_blank"
+            >Report an issue</a
+          >
+        </p>
+      </footer>
+    </div>
+
+    <script src="onboarding.js"></script>
+  </body>
+</html>

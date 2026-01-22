@@ -39,6 +39,8 @@ const LANGUAGE_MAP = {
 
 const NOTION_API_VERSION = "2022-06-28";
 const NOTION_TEXT_LIMIT = 1900;
+let isDetectingDatabase = false;
+const TEMPLATE_ORIGIN = "neelbansal.notion.site";
 
 /**
  * Required database schema - will auto-create missing columns
@@ -124,6 +126,40 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   return true;
 });
 
+// Listen for tab URL changes to detect database duplication
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (!isDetectingDatabase) return;
+  if (!changeInfo.url) return;
+
+  const url = changeInfo.url;
+
+  // Check if URL is a Notion page (not the template)
+  if (url.includes("notion.so") && !url.includes(TEMPLATE_ORIGIN)) {
+    // Extract database ID from URL
+    const patterns = [
+      /notion\.so\/[^/]+\/[^/]+-([a-f0-9]{32})/i,
+      /notion\.so\/[^/]+\/([a-f0-9]{32})/i,
+      /notion\.so\/([a-f0-9]{32})/i,
+    ];
+
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match && match[1]) {
+        const databaseId = match[1];
+
+        // Send to onboarding page
+        chrome.runtime.sendMessage({
+          action: "databaseDetected",
+          databaseId: databaseId,
+        });
+
+        isDetectingDatabase = false;
+        break;
+      }
+    }
+  }
+});
+
 async function handleMessage(request) {
   console.log("Leetion Background: Handling action:", request.action);
   switch (request.action) {
@@ -131,14 +167,78 @@ async function handleMessage(request) {
       return await saveToNotion(request.data);
     case "checkExisting":
       return await checkExistingProblem(request.data);
+    case "getStats":
+      return await handleGetStats(request.data);
+    case "startDatabaseDetection":
+      isDetectingDatabase = true;
+      return { success: true };
+    case "verifyConnection":
+      return await handleVerifyConnection(request.data);
     case "updateSpacedRepetition":
       console.log(
         "Leetion Background: updateSpacedRepetition called with:",
-        request.data
+        request.data,
       );
       return await updateSpacedRepetition(request.data);
     default:
       throw new Error(`Unknown action: ${request.action}`);
+  }
+}
+
+/**
+ * Verify Notion connection works
+ */
+async function handleVerifyConnection(data) {
+  const { apiKey, databaseId } = data;
+
+  try {
+    const response = await notionRequest(
+      `databases/${databaseId}`,
+      apiKey,
+      "GET",
+    );
+
+    if (response && response.id) {
+      let databaseName = "User's Leetion Template";
+      if (response.title && response.title.length > 0) {
+        databaseName = response.title.map((t) => t.plain_text).join("");
+      }
+
+      return {
+        success: true,
+        databaseName: databaseName,
+      };
+    } else {
+      return {
+        success: false,
+        error: "Could not access database",
+      };
+    }
+  } catch (error) {
+    console.error("Verify connection error:", error);
+
+    let errorMessage = error.message || "Connection failed";
+
+    if (errorMessage.includes("unauthorized") || errorMessage.includes("401")) {
+      errorMessage = "Invalid API key. Please check and try again.";
+    } else if (
+      errorMessage.includes("not_found") ||
+      errorMessage.includes("404")
+    ) {
+      errorMessage =
+        "Database not found. Make sure you added Leetion to connections.";
+    } else if (
+      errorMessage.includes("restricted") ||
+      errorMessage.includes("403")
+    ) {
+      errorMessage =
+        "Access denied. Please add Leetion integration to your database.";
+    }
+
+    return {
+      success: false,
+      error: errorMessage,
+    };
   }
 }
 
@@ -167,7 +267,7 @@ async function ensureDatabaseSchema(apiKey, databaseId) {
       console.log(
         `Leetion: Creating ${
           Object.keys(missingProps).length
-        } missing columns...`
+        } missing columns...`,
       );
       await notionRequest(`databases/${databaseId}`, apiKey, "PATCH", {
         properties: missingProps,
@@ -195,7 +295,7 @@ async function checkExistingProblem(data) {
       {
         filter: { property: "S No.", number: { equals: problemNumber } },
         page_size: 1,
-      }
+      },
     );
 
     if (!response.results?.length) return { exists: false };
@@ -239,7 +339,7 @@ async function getPageContent(apiKey, pageId) {
     const response = await notionRequest(
       `blocks/${pageId}/children?page_size=100`,
       apiKey,
-      "GET"
+      "GET",
     );
 
     let currentSection = "";
@@ -314,7 +414,7 @@ async function saveToNotion(data) {
   const properties = buildProperties(
     problem,
     existingPageId,
-    spacedRepetitionDays
+    spacedRepetitionDays,
   );
 
   // Determine if we have new content to save
@@ -354,13 +454,13 @@ async function saveToNotion(data) {
             `blocks/${existingPageId}/children`,
             apiKey,
             "PATCH",
-            { children }
+            { children },
           );
         }
         console.log("Leetion: Updated page content with snapshots/notes");
       } else {
         console.log(
-          "Leetion: No snapshots/notes, preserved existing page content"
+          "Leetion: No snapshots/notes, preserved existing page content",
         );
       }
 
@@ -399,7 +499,7 @@ async function deletePageBlocks(apiKey, pageId) {
     const response = await notionRequest(
       `blocks/${pageId}/children?page_size=100`,
       apiKey,
-      "GET"
+      "GET",
     );
 
     for (const block of response.results || []) {
@@ -427,7 +527,7 @@ async function notionRequest(endpoint, apiKey, method, body = null) {
 
   const response = await fetch(
     `https://api.notion.com/v1/${endpoint}`,
-    options
+    options,
   );
   const result = await response.json();
 
@@ -501,7 +601,7 @@ function buildProperties(problem, existingPageId, spacedRepetitionDays) {
   console.log(
     "Leetion: spacedRepetitionDays received:",
     spacedRepetitionDays,
-    typeof spacedRepetitionDays
+    typeof spacedRepetitionDays,
   );
   if (spacedRepetitionDays && spacedRepetitionDays > 0) {
     const reviewDate = new Date();
@@ -571,8 +671,8 @@ function buildPageContent(problem) {
       // Label: "Python3 - Solution 1 (Dec 26, 2025)"
       blocks.push(
         createSubheading(
-          `${snapshot.language} - Solution ${i + 1} (${dateStr})`
-        )
+          `${snapshot.language} - Solution ${i + 1} (${dateStr})`,
+        ),
       );
       for (const chunk of splitIntoChunks(snapshot.code, NOTION_TEXT_LIMIT)) {
         blocks.push(createCodeBlock(chunk, snapshotLang, snapshot.language));
@@ -890,6 +990,146 @@ function extractRichText(prop) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+chrome.runtime.onInstalled.addListener((details) => {
+  // Open onboarding on first install
+  if (details.reason === "install") {
+    chrome.storage.sync.get(["onboardingComplete"], (result) => {
+      if (!result.onboardingComplete) {
+        chrome.tabs.create({ url: chrome.runtime.getURL("onboarding.html") });
+      }
+    });
+  }
+
+  // Setup alarms
+  chrome.alarms.create("checkReviews", {
+    periodInMinutes: 60,
+  });
+  checkDueReviews();
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  checkDueReviews();
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name == "checkReviews") {
+    checkDueReviews();
+  }
+});
+
+async function checkDueReviews() {
+  console.log("checkDueReviews started");
+
+  try {
+    const settings = await chrome.storage.sync.get([
+      "notionApiKey",
+      "notionDatabaseId",
+    ]);
+    console.log("Settings loaded:", {
+      hasApiKey: !!settings.notionApiKey,
+      hasDbId: !!settings.notionDatabaseId,
+    });
+
+    if (!settings.notionApiKey || !settings.notionDatabaseId) {
+      console.log("Missing settings, returning early");
+      return;
+    }
+
+    const today = new Date().toISOString().split("T")[0];
+    console.log("Querying for date:", today);
+
+    const response = await notionRequest(
+      `databases/${settings.notionDatabaseId}/query`,
+      settings.notionApiKey,
+      "POST",
+      {
+        filter: {
+          property: "Spaced Repetition",
+          date: {
+            on_or_before: today,
+          },
+        },
+      },
+    );
+
+    console.log("Notion response:", response);
+
+    const dueCount = response.results?.length || 0;
+    console.log("Due count:", dueCount);
+
+    if (dueCount > 0) {
+      chrome.notifications.create(
+        `reviewReminder-${today}`,
+        {
+          type: "basic",
+          iconUrl: "icons/icon128.png",
+          title: "LeetCode Review Due",
+          message: `You have ${dueCount} problem${
+            dueCount > 1 ? "s" : ""
+          } due for review today.`,
+          priority: 2,
+        },
+        (notificationId) => {
+          if (chrome.runtime.lastError) {
+            console.error(
+              "Notification error:",
+              chrome.runtime.lastError.message,
+            );
+          } else {
+            console.log("Notification created:", notificationId);
+          }
+        },
+      );
+    }
+  } catch (error) {
+    console.error("Error checking due reviews:", error);
+  }
+}
+
+async function handleGetStats(data) {
+  const { apiKey, databaseId } = data;
+
+  try {
+    const response = await notionRequest(
+      `databases/${databaseId}/query`,
+      apiKey,
+      "POST",
+      { page_size: 100 },
+    );
+
+    const results = response.results || [];
+    let easy = 0,
+      medium = 0,
+      hard = 0,
+      dueForReview = 0;
+    const today = new Date().toISOString().split("T")[0];
+
+    results.forEach((page) => {
+      const props = page.properties;
+      const difficulty = props.Level?.select?.name;
+
+      if (difficulty === "Easy") easy++;
+      else if (difficulty === "Medium") medium++;
+      else if (difficulty === "Hard") hard++;
+
+      const reviewDate = props["Spaced Repetition"]?.date?.start;
+      if (reviewDate && reviewDate <= today) dueForReview++;
+    });
+
+    return {
+      success: true,
+      total: results.length,
+      easy,
+      medium,
+      hard,
+      dueForReview,
+    };
+  } catch (error) {
+    console.error("Error getting stats:", error);
+    return { success: false, error: error.message };
+  }
 }
 
 console.log("Leetion: Background service worker loaded");

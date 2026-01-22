@@ -106,6 +106,7 @@ const DOM = {
     toggleDbIdBtn: document.getElementById("btn-toggle-db-id"),
     saveBtn: document.getElementById("btn-save-settings"),
     status: document.getElementById("settings-status"),
+    runSetupBtn: document.getElementById("btn-run-setup"),
   },
   nav: {
     settingsEmpty: document.getElementById("btn-settings-empty"),
@@ -150,6 +151,19 @@ const DOM = {
   save: {
     btn: document.getElementById("btn-save"),
     status: document.getElementById("save-status"),
+  },
+  stats: {
+    modal: document.getElementById("stats-modal"),
+    openBtn: document.getElementById("btn-stats"),
+    closeBtn: document.getElementById("btn-close-stats"),
+    content: document.getElementById("stats-content"),
+    loading: document.getElementById("stats-loading"),
+    error: document.getElementById("stats-error"),
+    total: document.getElementById("stat-total"),
+    easy: document.getElementById("stat-easy"),
+    medium: document.getElementById("stat-medium"),
+    hard: document.getElementById("stat-hard"),
+    dueReview: document.getElementById("stat-due-review"),
   },
 };
 
@@ -858,6 +872,7 @@ function setupEventListeners() {
 
   // Save settings
   DOM.settings.saveBtn?.addEventListener("click", saveSettings);
+  DOM.settings.runSetupBtn?.addEventListener("click", openSetupWizard);
 
   // Refresh code
   DOM.problem.refreshBtn?.addEventListener("click", async () => {
@@ -918,6 +933,13 @@ function setupEventListeners() {
 
   // Save
   DOM.save.btn?.addEventListener("click", saveToNotion);
+
+  // Stats modal
+  DOM.stats.openBtn?.addEventListener("click", openStatsModal);
+  DOM.stats.closeBtn?.addEventListener("click", closeStatsModal);
+  DOM.stats.modal?.addEventListener("click", (e) => {
+    if (e.target === DOM.stats.modal) closeStatsModal();
+  });
 }
 
 /**
@@ -1420,4 +1442,98 @@ function renderSnapshots() {
  */
 function getSnapshotsForSave() {
   return codeSnapshots;
+}
+
+/**
+ * This loads the amount of reviews the person has left as based on the notion database.
+ */
+
+async function loadDueReviewCount() {
+  const { dueReviewCount } = await chrome.storage.local.get(["dueReviewCount"]);
+  if (dueReviewCount > 0) {
+    // Add a badge or text showing due reviews
+    const reviewBadge = document.getElementById("review-badge");
+    if (reviewBadge) {
+      reviewBadge.textContent = `🔔 ${dueReviewCount} problem${
+        dueReviewCount > 1 ? "s" : ""
+      } due for review`;
+      reviewBadge.classList.remove("hidden");
+    }
+  }
+}
+
+/**
+ * Opens stats modal and loads data.
+ */
+async function openStatsModal() {
+  DOM.stats.modal?.classList.remove("hidden");
+  await loadStats();
+}
+
+/**
+ * Closes stats modal.
+ */
+function closeStatsModal() {
+  DOM.stats.modal?.classList.add("hidden");
+}
+
+/**
+ * Loads stats from Notion database.
+ */
+async function loadStats() {
+  const settings = await chrome.storage.sync.get([
+    "notionApiKey",
+    "notionDatabaseId",
+  ]);
+
+  if (!settings.notionApiKey || !settings.notionDatabaseId) {
+    DOM.stats.content?.classList.add("hidden");
+    DOM.stats.loading?.classList.add("hidden");
+    DOM.stats.error?.classList.remove("hidden");
+    return;
+  }
+
+  DOM.stats.content?.classList.add("hidden");
+  DOM.stats.error?.classList.add("hidden");
+  DOM.stats.loading?.classList.remove("hidden");
+
+  try {
+    const response = await chrome.runtime.sendMessage({
+      action: "getStats",
+      data: {
+        apiKey: settings.notionApiKey,
+        databaseId: settings.notionDatabaseId,
+      },
+    });
+
+    if (response?.success) {
+      DOM.stats.total.textContent = response.total || 0;
+      DOM.stats.easy.textContent = response.easy || 0;
+      DOM.stats.medium.textContent = response.medium || 0;
+      DOM.stats.hard.textContent = response.hard || 0;
+
+      const dueCount = response.dueForReview || 0;
+      DOM.stats.dueReview.textContent =
+        dueCount === 0
+          ? "No problems due for review 🎉"
+          : `${dueCount} problem${dueCount > 1 ? "s" : ""} due for review`;
+
+      DOM.stats.loading?.classList.add("hidden");
+      DOM.stats.content?.classList.remove("hidden");
+    } else {
+      throw new Error(response?.error || "Failed to load stats");
+    }
+  } catch (error) {
+    console.error("Error loading stats:", error);
+    DOM.stats.loading?.classList.add("hidden");
+    DOM.stats.error?.classList.remove("hidden");
+  }
+}
+
+/**
+ * Opens the setup wizard in a new tab.
+ */
+function openSetupWizard() {
+  chrome.tabs.create({ url: chrome.runtime.getURL("onboarding.html") });
+  window.close();
 }

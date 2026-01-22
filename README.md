@@ -1,8 +1,20 @@
+<div align="center">
+
 # Leetion
 
 Save your LeetCode solutions directly to Notion with one click.
 
 [![Chrome Web Store](https://img.shields.io/badge/Chrome-Extension-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/leetion/jecnakakffleikibkbkdchdipmgeahpm)
+[![Firefox Add-ons](https://img.shields.io/badge/Firefox-Add--on-FF7139?logo=firefoxbrowser&logoColor=white)](https://addons.mozilla.org/firefox/addon/leetion/)
+
+</div>
+
+## Demo
+
+[![Watch Demo](https://img.youtube.com/vi/2D5j_3Kl5qQ/maxresdefault.jpg)](https://www.youtube.com/watch?v=2D5j_3Kl5qQ)
+
+- [Quick Overview](https://www.youtube.com/watch?v=2D5j_3Kl5qQ)
+- [Full Tutorial](https://www.youtube.com/watch?v=D6I_ZZtsMN8)
 
 ## Features
 
@@ -22,12 +34,20 @@ Save your LeetCode solutions directly to Notion with one click.
 2. Click "Add to Chrome"
 3. Follow the setup instructions below
 
+### Firefox Add-ons
+
+1. Visit the [Firefox Add-ons page](https://addons.mozilla.org/firefox/addon/leetion/)
+2. Click "Add to Firefox"
+3. Follow the setup instructions below
+
 ### Manual Installation
 
 1. Clone this repository
-2. Open Chrome and go to `chrome://extensions`
-3. Enable "Developer mode" (toggle in top right)
-4. Click "Load unpacked" and select the repository folder
+2. Open your browser's extension page:
+   - Chrome: `chrome://extensions`
+   - Firefox: `about:debugging#/runtime/this-firefox`
+3. Enable "Developer mode" (Chrome) or click "Load Temporary Add-on" (Firefox)
+4. Load the extension folder
 
 ## Setup
 
@@ -65,9 +85,10 @@ Create a new database in Notion with these properties:
 1. Open your Notion database
 2. Click "..." menu → "Connections" → Add your "Leetion" integration
 3. Copy the database ID from the URL:
-   ```
-   https://notion.so/workspace/DATABASE_ID?v=...
-   ```
+
+```
+https://notion.so/workspace/DATABASE_ID?v=...
+```
 
 ### 4. Configure Leetion
 
@@ -95,17 +116,35 @@ Create a new database in Notion with these properties:
 
 ```
 leetion/
-├── manifest.json      # Extension configuration
-├── popup.html         # Popup UI markup
-├── popup.js           # Main popup logic & event handling
-├── background.js      # Service worker for Notion API calls
-├── content.js         # Content script
-├── styles.css         # Styling
-└── icons/             # Extension icons
+├── manifest.json       # Extension configuration
+├── popup.html          # Popup UI markup
+├── popup.js            # Main popup logic & event handling
+├── background.js       # Service worker for Notion API calls
+├── content.js          # Content script for LeetCode pages
+├── styles.css          # Popup styling
+├── onboarding.html     # First-time setup page
+├── onboarding.css      # Onboarding styling
+├── onboarding.js       # Onboarding logic
+├── icons/              # Extension icons
+├── build.sh            # Build script for packaging
+├── LICENSE             # License file
+└── README.md           # Documentation
 ```
+
+## Contributing
+
+Contributions are welcome! Feel free to open issues or submit pull requests.
+
+By submitting a contribution, you agree to transfer all rights to your contribution to the copyright holder.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Copyright (c) 2025 Neel Bansal. All Rights Reserved.
 
-**If you fork this project or create a derivative work, please credit the original author (Neel).**
+This software and its source code are proprietary. You may NOT:
+
+- Copy, redistribute, or republish this software
+- Use this code to create derivative works
+- Submit this software to any app store or extension marketplace
+
+See the [LICENSE](LICENSE) file for full details.

@@ -689,7 +689,7 @@
         0,
         0,
         canvas.width,
-        canvas.height
+        canvas.height,
       ).data;
       for (let i = 3; i < imageData.length; i += 4) {
         if (imageData[i] > 0) return true;
@@ -799,7 +799,7 @@
               // Clean Unicode
               text = text.replace(
                 /[\u00A0\u1680\u180E\u2000-\u200B\u202F\u205F\u3000\uFEFF]/g,
-                " "
+                " ",
               );
               text = text.replace(/·/g, " ");
               text = text.replace(/[\u200B\u200C\u200D]/g, "");
@@ -839,7 +839,7 @@
 
       // Extract tags
       const tagEls = document.querySelectorAll(
-        'a[href*="/tag/"], a[href*="/topics/"]'
+        'a[href*="/tag/"], a[href*="/topics/"]',
       );
       for (let i = 0; i < tagEls.length; i++) {
         const text = tagEls[i].textContent.trim();
@@ -856,7 +856,7 @@
       // Extract acceptance rate
       const allText = document.body.innerText;
       const acceptMatch = allText.match(
-        /(?:Acceptance|Accepted)[:\s]*(\d+\.?\d*%)/i
+        /(?:Acceptance|Accepted)[:\s]*(\d+\.?\d*%)/i,
       );
       if (acceptMatch) {
         data.acceptanceRate = acceptMatch[1];
