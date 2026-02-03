@@ -769,6 +769,7 @@ body {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
+  width: 100%;
 }
 
 .btn-snapshot:hover {
@@ -1121,4 +1122,119 @@ body {
 .btn-setup svg {
   width: 18px;
   height: 18px;
+}
+
+/* Question Preview */
+.question-preview {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-y: auto;
+  max-height: 180px;
+  padding: 12px;
+  margin: 0;
+  width: 100%;
+  display: block;
+}
+
+.question-preview code {
+  display: inline;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 11px;
+  color: var(--accent);
+}
+
+/* Section headers in question */
+.question-preview .section-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+.question-preview .section-label:first-child {
+  margin-top: 0;
+}
+
+/* Example formatting */
+.question-preview .example {
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 2px solid var(--accent);
+  padding: 8px 12px;
+  margin: 8px 0;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.question-preview .example-io {
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 11px;
+  color: var(--text-primary);
+}
+
+/* Constraints list */
+.question-preview .constraint {
+  display: block;
+  padding: 2px 0;
+  color: var(--text-secondary);
+}
+
+.question-preview .constraint::before {
+  content: "•";
+  color: var(--text-tertiary);
+  margin-right: 8px;
+}
+
+/* Scrollbar for question preview */
+.question-preview::-webkit-scrollbar {
+  width: 6px;
+}
+
+.question-preview::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.question-preview::-webkit-scrollbar-thumb {
+  background: var(--bg-elevated);
+  border-radius: 3px;
+}
+
+.question-preview::-webkit-scrollbar-thumb:hover {
+  background: var(--border);
+}
+
+/* Collapsible Card */
+.card-collapsible .card-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.card-collapsible .card-body {
+  max-height: 0;
+  overflow: hidden;
+  transition:
+    max-height 0.25s ease,
+    padding 0.25s ease;
+}
+
+.card-collapsible.expanded .card-body {
+  max-height: 500px; /* Adjust based on content */
+}
+
+.collapse-icon {
+  transition: transform 0.25s ease;
+}
+
+.card-collapsible.expanded .collapse-icon {
+  transform: rotate(180deg);
 }

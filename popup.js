@@ -5,7 +5,7 @@
  * Handles UI interactions, data scraping, and communication with background script.
  *
  * @author Leetion
- * @version 1.1.1
+ * @version 1.1.4
  */
 
 // CONFIGURATION & CONSTANTS
@@ -61,6 +61,7 @@ const TAG_MAPPING = {
 /** @type {Object} Current problem data from LeetCode */
 let problemData = {
   number: null,
+  question: null,
   title: null,
   difficulty: null,
   code: null,
@@ -70,6 +71,9 @@ let problemData = {
   acceptanceRate: null,
   totalSubmissions: null,
   userAttempts: null,
+  questionContent: null,
+  examples: [],
+  constraints: [],
 };
 
 /** @type {string[]} Currently selected tags */
@@ -121,10 +125,24 @@ const DOM = {
     codePreview: document.getElementById("code-preview"),
     codeLanguage: document.getElementById("code-language"),
     refreshBtn: document.getElementById("btn-refresh-code"),
+    questionPreview: document.getElementById("question-preview"),
     statsContainer: document.getElementById("problem-stats"),
     statAcceptance: document.getElementById("stat-acceptance"),
     statSubmissions: document.getElementById("stat-submissions"),
     statAttempts: document.getElementById("stat-attempts"),
+    // Empty/filled state containers
+    codeEmpty: document.getElementById("code-empty"),
+    codeFilled: document.getElementById("code-filled"),
+    questionEmpty: document.getElementById("question-empty"),
+    questionFilled: document.getElementById("question-filled"),
+    refreshCodeEmptyBtn: document.getElementById("btn-refresh-code-empty"),
+    refreshQuestionBtn: document.getElementById("btn-refresh-question"),
+    refreshQuestionEmptyBtn: document.getElementById(
+      "btn-refresh-question-empty",
+    ),
+    saveQuestionToggle: document.getElementById("input-save-question"),
+    codeDetectedIcon: document.getElementById("code-detected-icon"),
+    cardCode: document.getElementById("card-code"),
   },
   snapshots: {
     btn: document.getElementById("btn-snapshot"),
@@ -217,7 +235,6 @@ async function loadSettings() {
       DOM.settings.apiKeyInput.value = result.notionApiKey;
     if (result.notionDatabaseId)
       DOM.settings.databaseIdInput.value = result.notionDatabaseId;
-    // Default to 30 days if not set
     DOM.settings.spacedRepInput.value = result.spacedRepetitionDays ?? 30;
   } catch (error) {
     console.error("Error loading settings:", error);
@@ -237,7 +254,6 @@ async function loadPersistedFormState(problemNumber) {
     const state = result[key];
 
     if (state) {
-      // Restore form fields
       if (state.notes) DOM.form.notes.value = state.notes;
       if (state.remark) DOM.form.remark.value = state.remark;
       if (state.altMethods) DOM.form.altMethods.value = state.altMethods;
@@ -247,14 +263,13 @@ async function loadPersistedFormState(problemNumber) {
         DOM.complexity.space.value = state.spaceComplexity;
       if (typeof state.done === "boolean") DOM.form.done.checked = state.done;
 
-      // Restore expertise
       if (state.expertise) {
         selectedExpertise = state.expertise;
         document.querySelectorAll(".expertise-btn").forEach((btn) => {
           btn.classList.remove(
             "selected-low",
             "selected-medium",
-            "selected-high"
+            "selected-high",
           );
           if (btn.dataset.expertise === state.expertise) {
             btn.classList.add(`selected-${state.expertise.toLowerCase()}`);
@@ -262,7 +277,6 @@ async function loadPersistedFormState(problemNumber) {
         });
       }
 
-      // Restore tags
       if (state.tags?.length) {
         state.tags.forEach((tag) => {
           if (!selectedTags.includes(tag)) {
@@ -358,7 +372,7 @@ async function scrapeProblemData(tabId) {
     const results = await chrome.scripting.executeScript({
       target: { tabId },
       func: extractProblemDataFromPage,
-      world: "MAIN", // Run in page context to access monaco global
+      world: "MAIN",
     });
 
     if (results?.[0]?.result) {
@@ -366,7 +380,6 @@ async function scrapeProblemData(tabId) {
       updateProblemUI();
       autoSelectScrapedTags(problemData.scrapedTags);
 
-      // Load snapshots and form state for this problem
       await loadSnapshots(problemData.number);
       await loadPersistedFormState(problemData.number);
 
@@ -375,6 +388,14 @@ async function scrapeProblemData(tabId) {
   } catch (error) {
     console.error("Error scraping:", error);
   }
+}
+
+/**
+ * Refreshes problem data from the page.
+ */
+async function refreshData() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  await scrapeProblemData(tab.id);
 }
 
 /**
@@ -390,6 +411,9 @@ function extractProblemDataFromPage() {
     language: null,
     url: window.location.href,
     scrapedTags: [],
+    questionContent: null,
+    examples: [],
+    constraints: [],
   };
 
   // Extract title/number
@@ -445,19 +469,17 @@ function extractProblemDataFromPage() {
     }
   }
 
-  // Extract code - Monaco is available globally as window.monaco
-  // Use monaco.editor.getModels()[0].getValue() to get full code
+  // Extract code via Monaco
   try {
     const models = monaco.editor.getModels();
     if (models && models.length > 0) {
-      // Find the model with actual code (usually the first one with substantial content)
       for (const model of models) {
         const value = model.getValue();
         if (value && value.length > 10) {
           data.code = value;
           console.log(
             "Leetion: Got code via monaco.editor.getModels(), length:",
-            value.length
+            value.length,
           );
           break;
         }
@@ -467,7 +489,7 @@ function extractProblemDataFromPage() {
     console.log("Leetion: monaco.editor.getModels() failed:", e);
   }
 
-  // Fallback: just get visible lines from DOM (incomplete but better than nothing)
+  // Fallback: DOM scraping
   if (!data.code) {
     const linesContent = document.querySelector(".monaco-editor .view-lines");
     if (linesContent) {
@@ -480,7 +502,7 @@ function extractProblemDataFromPage() {
         let text = line.innerText || "";
         text = text.replace(
           /[\u00A0\u1680\u180E\u2000-\u200B\u202F\u205F\u3000\uFEFF]/g,
-          " "
+          " ",
         );
         text = text.replace(/·/g, " ");
         text = text.replace(/[\u200B\u200C\u200D]/g, "");
@@ -492,7 +514,7 @@ function extractProblemDataFromPage() {
       data.code = lineData.map((l) => l.text).join("\n");
       console.log(
         "Leetion: Got code via DOM fallback (may be incomplete), lines:",
-        lineData.length
+        lineData.length,
       );
     }
   }
@@ -532,6 +554,103 @@ function extractProblemDataFromPage() {
       }
     });
 
+  // Extract question content, examples, and constraints
+  try {
+    const descriptionSelectors = [
+      '[data-track-load="description_content"]',
+      ".elfjS",
+      '[class*="question-content"]',
+      ".content__u3I1",
+      'div[class*="_1l1MA"]',
+    ];
+
+    let questionContainer = null;
+    for (const sel of descriptionSelectors) {
+      questionContainer = document.querySelector(sel);
+      if (questionContainer) break;
+    }
+
+    if (questionContainer) {
+      const fullText = questionContainer.innerText;
+      data.questionContent = fullText;
+
+      // Extract examples
+      data.examples = [];
+      const exampleRegex =
+        /Example\s*(\d+):\s*\n?Input:\s*(.+?)\s*\n?Output:\s*(.+?)(?:\s*\n?Explanation:\s*(.+?))?(?=\n\s*Example|\n\s*Constraints|$)/gis;
+
+      let match;
+      while ((match = exampleRegex.exec(fullText)) !== null) {
+        data.examples.push({
+          number: parseInt(match[1]),
+          input: match[2]?.trim(),
+          output: match[3]?.trim(),
+          explanation: match[4]?.trim() || null,
+        });
+      }
+
+      // DOM-based fallback
+      if (data.examples.length === 0) {
+        const preElements = questionContainer.querySelectorAll("pre");
+        preElements.forEach((pre, index) => {
+          const text = pre.innerText;
+          const inputMatch = text.match(/Input:\s*(.+)/);
+          const outputMatch = text.match(/Output:\s*(.+)/);
+          const explanationMatch = text.match(/Explanation:\s*(.+)/s);
+
+          if (inputMatch || outputMatch) {
+            data.examples.push({
+              number: index + 1,
+              input: inputMatch ? inputMatch[1].trim() : "",
+              output: outputMatch ? outputMatch[1].trim() : "",
+              explanation: explanationMatch ? explanationMatch[1].trim() : null,
+            });
+          }
+        });
+      }
+
+      // Extract constraints
+      data.constraints = [];
+      const constraintsMatch = fullText.match(
+        /Constraints:\s*([\s\S]*?)(?=\n\s*Follow|$)/i,
+      );
+      if (constraintsMatch) {
+        const constraintsText = constraintsMatch[1];
+        const constraintLines = constraintsText
+          .split(/\n|•|·/)
+          .map((c) => c.trim())
+          .filter((c) => c.length > 0 && !c.match(/^\s*$/));
+        data.constraints = constraintLines;
+      }
+
+      if (data.constraints.length === 0) {
+        const constraintsHeader = Array.from(
+          questionContainer.querySelectorAll("p, strong"),
+        ).find((el) => el.textContent.includes("Constraints"));
+
+        if (constraintsHeader) {
+          const nextUl =
+            constraintsHeader.closest("div")?.querySelector("ul") ||
+            constraintsHeader.nextElementSibling;
+          if (nextUl && nextUl.tagName === "UL") {
+            data.constraints = Array.from(nextUl.querySelectorAll("li")).map(
+              (li) => li.innerText.trim(),
+            );
+          }
+        }
+      }
+
+      console.log(
+        "Leetion: Extracted question content, examples:",
+        data.examples.length,
+        "constraints:",
+        data.constraints.length,
+      );
+    }
+  } catch (e) {
+    console.log("Leetion: Error extracting question details:", e);
+  }
+
   return data;
 }
 
@@ -570,17 +689,72 @@ function updateProblemUI() {
       "difficulty-badge " + problemData.difficulty.toLowerCase();
   }
 
+  // Handle CODE empty/filled states
   if (problemData.code) {
-    // Display code with HTML escaping only - no syntax highlighting to avoid issues
+    DOM.problem.codeEmpty?.classList.add("hidden");
+    DOM.problem.codeFilled?.classList.remove("hidden");
+    DOM.problem.codeDetectedIcon?.classList.remove("hidden");
+    DOM.problem.cardCode?.classList.remove("expanded"); // Collapse if code found
+
     const escaped = problemData.code
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
     DOM.problem.codePreview.innerHTML = escaped;
+  } else {
+    DOM.problem.codeEmpty?.classList.remove("hidden");
+    DOM.problem.codeFilled?.classList.add("hidden");
+    DOM.problem.codeDetectedIcon?.classList.add("hidden");
+    DOM.problem.cardCode?.classList.add("expanded"); // Expand if no code found
   }
 
   if (problemData.language)
     DOM.problem.codeLanguage.textContent = problemData.language;
+
+  // Handle QUESTION empty/filled states
+  if (problemData.questionContent) {
+    DOM.problem.questionEmpty?.classList.add("hidden");
+    DOM.problem.questionFilled?.classList.remove("hidden");
+
+    // Display formatted question
+    let html = "";
+
+    // Get description (before examples)
+    const descEnd = problemData.questionContent.indexOf("Example");
+    const description =
+      descEnd > 0
+        ? problemData.questionContent.substring(0, descEnd).trim()
+        : problemData.questionContent.substring(0, 300).trim();
+
+    html += `<span class="section-label">Problem</span>`;
+    html += `<div>${escapeHtml(description).substring(0, 200)}${description.length > 200 ? "..." : ""}</div>`;
+
+    // Add first example if available
+    if (problemData.examples?.length > 0) {
+      const ex = problemData.examples[0];
+      html += `<span class="section-label">Example</span>`;
+      html += `<div class="example">`;
+      html += `<div class="example-io">Input: ${escapeHtml(ex.input)}</div>`;
+      html += `<div class="example-io">Output: ${escapeHtml(ex.output)}</div>`;
+      html += `</div>`;
+    }
+
+    // Add constraints preview
+    if (problemData.constraints?.length > 0) {
+      html += `<span class="section-label">Constraints</span>`;
+      problemData.constraints.slice(0, 2).forEach((c) => {
+        html += `<span class="constraint">${escapeHtml(c)}</span>`;
+      });
+      if (problemData.constraints.length > 2) {
+        html += `<span class="constraint" style="color: var(--text-tertiary)">+${problemData.constraints.length - 2} more...</span>`;
+      }
+    }
+
+    DOM.problem.questionPreview.innerHTML = html;
+  } else {
+    DOM.problem.questionEmpty?.classList.remove("hidden");
+    DOM.problem.questionFilled?.classList.add("hidden");
+  }
 
   // Update problem stats if available
   updateProblemStats();
@@ -597,6 +771,20 @@ function cleanCodeString(code) {
     .replace(/[\u00A0\u1680\u180E\u2000-\u200A\u202F\u205F\u3000]/g, " ")
     .replace(/[\u200B\u200C\u200D\uFEFF]/g, "")
     .replace(/·/g, " ");
+}
+
+/**
+ * Escapes HTML special characters.
+ * @param {string} text - Raw text
+ * @returns {string} Escaped text
+ */
+function escapeHtml(text) {
+  if (!text) return "";
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 /**
@@ -635,7 +823,6 @@ function populateExistingData(data) {
 
 /**
  * Checks if problem exists in Notion.
- * Only populates form with Notion data if there's no local state saved.
  */
 async function checkExistingEntry() {
   const settings = await chrome.storage.sync.get([
@@ -662,28 +849,23 @@ async function checkExistingEntry() {
     if (response?.exists) {
       existingPageId = response.pageId;
 
-      // Check if we have local form state - if so, don't overwrite with Notion data
       const formStateKey = `form_state_${problemData.number}`;
       const localState = await chrome.storage.local.get([formStateKey]);
       const hasLocalState = !!localState[formStateKey];
 
       if (!hasLocalState) {
-        // No local changes, safe to load from Notion
         populateExistingData(response);
       }
 
       updateSaveButton(true);
 
-      // Show quick actions for existing entries
       DOM.quickActions.card?.classList.remove("hidden");
 
-      // Load attempt count (always load this)
       if (response.attempts) {
         userAttemptCount = response.attempts;
         updateAttemptDisplay();
       }
 
-      // Only load complexity from Notion if no local state
       if (!hasLocalState) {
         if (response.timeComplexity && DOM.complexity.time) {
           DOM.complexity.time.value = response.timeComplexity;
@@ -691,12 +873,23 @@ async function checkExistingEntry() {
         if (response.spaceComplexity && DOM.complexity.space) {
           DOM.complexity.space.value = response.spaceComplexity;
         }
+        
+        // If question exists in Notion, check the toggle so we don't wipe it on save
+        if (response.hasQuestion && DOM.problem.saveQuestionToggle) {
+            DOM.problem.saveQuestionToggle.checked = true;
+        }
+      } else {
+        // If we have local state, we rely on that, BUT if local state didn't track the toggle (old version)
+        // verify against Notion.
+        if (response.hasQuestion && DOM.problem.saveQuestionToggle && !localState[formStateKey].hasOwnProperty('saveQuestion')) {
+             DOM.problem.saveQuestionToggle.checked = true;
+        }
       }
 
       showStatus(
         DOM.save.status,
         "Found existing entry - will update on save",
-        "success"
+        "success",
       );
     }
   } catch (error) {
@@ -732,8 +925,14 @@ async function saveToNotion() {
     const spacedRepDays = settings.spacedRepetitionDays ?? 30;
     console.log("Leetion: Sending spacedRepetitionDays:", spacedRepDays);
 
-    // Include snapshots in save
     const snapshotsToSave = getSnapshotsForSave();
+
+
+    let description = problemData.questionContent || "";
+    const descEnd = description.indexOf("Example");
+    if (descEnd > 0) {
+      description = description.substring(0, descEnd).trim();
+    }
 
     const response = await chrome.runtime.sendMessage({
       action: "saveToNotion",
@@ -759,6 +958,13 @@ async function saveToNotion() {
           spaceComplexity: DOM.complexity.space?.value || "",
           attempts: userAttemptCount || 1,
           snapshots: snapshotsToSave,
+          saveQuestion: DOM.problem.saveQuestionToggle?.checked || false,
+          questionContent: {
+            content: problemData.questionContent, // Keep original full content just in case
+            description: description, // Send trimmed description
+            examples: problemData.examples,
+            constraints: problemData.constraints,
+          },
         },
       },
     });
@@ -776,7 +982,6 @@ async function saveToNotion() {
       }
       showStatus(DOM.save.status, message, "success");
 
-      // Clear persisted form state after successful save
       await clearPersistedFormState(problemData.number);
 
       if (!existingPageId && response.pageId) {
@@ -829,14 +1034,14 @@ function setSaveButtonLoading(loading) {
 
   if (loading) {
     DOM.save.btn.innerHTML = `
-      <svg class="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <svg class="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
       </svg>
       <span>Saving...</span>
     `;
   } else {
     DOM.save.btn.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
         <polyline points="17,21 17,13 7,13 7,21"/>
         <polyline points="7,3 7,8 15,8"/>
@@ -853,35 +1058,32 @@ function setupEventListeners() {
   DOM.nav.settingsEmpty?.addEventListener("click", () => showView("settings"));
   DOM.nav.settingsMain?.addEventListener("click", () => showView("settings"));
   DOM.nav.back?.addEventListener("click", () =>
-    showView(previousView === "settings" ? "main" : previousView)
+    showView(previousView === "settings" ? "main" : previousView),
   );
 
   // Settings toggles
   DOM.settings.toggleApiKeyBtn?.addEventListener("click", () =>
     toggleInputVisibility(
       DOM.settings.apiKeyInput,
-      DOM.settings.toggleApiKeyBtn
-    )
+      DOM.settings.toggleApiKeyBtn,
+    ),
   );
   DOM.settings.toggleDbIdBtn?.addEventListener("click", () =>
     toggleInputVisibility(
       DOM.settings.databaseIdInput,
-      DOM.settings.toggleDbIdBtn
-    )
+      DOM.settings.toggleDbIdBtn,
+    ),
   );
 
   // Save settings
   DOM.settings.saveBtn?.addEventListener("click", saveSettings);
   DOM.settings.runSetupBtn?.addEventListener("click", openSetupWizard);
 
-  // Refresh code
-  DOM.problem.refreshBtn?.addEventListener("click", async () => {
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      currentWindow: true,
-    });
-    await scrapeProblemData(tab.id);
-  });
+  // Refresh buttons (both filled and empty states)
+  DOM.problem.refreshBtn?.addEventListener("click", refreshData);
+  DOM.problem.refreshCodeEmptyBtn?.addEventListener("click", refreshData);
+  DOM.problem.refreshQuestionBtn?.addEventListener("click", refreshData);
+  DOM.problem.refreshQuestionEmptyBtn?.addEventListener("click", refreshData);
 
   // Drawing canvas
   DOM.nav.drawing?.addEventListener("click", openDrawingCanvas);
@@ -926,7 +1128,7 @@ function setupEventListeners() {
   DOM.form.remark?.addEventListener("blur", persistFormState);
   DOM.form.altMethods?.addEventListener(
     "input",
-    debounce(persistFormState, 500)
+    debounce(persistFormState, 500),
   );
   DOM.form.altMethods?.addEventListener("blur", persistFormState);
   DOM.form.done?.addEventListener("change", persistFormState);
@@ -940,6 +1142,19 @@ function setupEventListeners() {
   DOM.stats.modal?.addEventListener("click", (e) => {
     if (e.target === DOM.stats.modal) closeStatsModal();
   });
+
+  document.getElementById("card-code-toggle").addEventListener("click", (e) => {
+    // Don't toggle if clicking the refresh button
+    if (e.target.closest("#btn-refresh-code")) return;
+
+    document.getElementById("card-code").classList.toggle("expanded");
+  });
+  document
+    .getElementById("card-question-toggle")
+    .addEventListener("click", (e) => {
+      if (e.target.closest("#btn-refresh-question")) return;
+      document.getElementById("card-question").classList.toggle("expanded");
+    });
 }
 
 /**
@@ -1025,7 +1240,7 @@ function selectExpertise(btn) {
 async function markForReviewTomorrow() {
   console.log(
     "Leetion: markForReviewTomorrow called, existingPageId:",
-    existingPageId
+    existingPageId,
   );
   if (!existingPageId) {
     console.log("Leetion: No existingPageId, returning");
@@ -1056,7 +1271,6 @@ async function markForReviewTomorrow() {
     console.log("Leetion: Got response:", response);
 
     if (response?.success) {
-      // Show success state with highlight
       DOM.quickActions.markReview.classList.add("quick-btn-success");
       DOM.quickActions.revisit.classList.remove("quick-btn-success");
       showStatus(DOM.save.status, "Review set for tomorrow!", "success");
@@ -1064,7 +1278,7 @@ async function markForReviewTomorrow() {
       showStatus(
         DOM.save.status,
         response?.error || "Failed to update",
-        "error"
+        "error",
       );
     }
   } catch (error) {
@@ -1073,14 +1287,14 @@ async function markForReviewTomorrow() {
   } finally {
     DOM.quickActions.markReview.disabled = false;
     DOM.quickActions.markReview.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
         <line x1="16" y1="2" x2="16" y2="6"/>
         <line x1="8" y1="2" x2="8" y2="6"/>
         <line x1="3" y1="10" x2="21" y2="10"/>
         <path d="M9 16l2 2 4-4"/>
       </svg>
-      Review Tomorrow
+      Tomorrow
     `;
   }
 }
@@ -1106,7 +1320,6 @@ async function revisitProblem() {
     DOM.quickActions.revisit.disabled = true;
     DOM.quickActions.revisit.textContent = "Resetting...";
 
-    // Increment attempt count
     userAttemptCount++;
 
     const response = await chrome.runtime.sendMessage({
@@ -1120,23 +1333,20 @@ async function revisitProblem() {
     });
 
     if (response?.success) {
-      // Show success state with highlight
       DOM.quickActions.revisit.classList.add("quick-btn-success");
       DOM.quickActions.markReview.classList.remove("quick-btn-success");
-      // Update UI
       updateAttemptDisplay();
       showStatus(
         DOM.save.status,
         `Reset! Next review in ${days} days`,
-        "success"
+        "success",
       );
     } else {
-      // Revert attempt count on failure
       userAttemptCount--;
       showStatus(
         DOM.save.status,
         response?.error || "Failed to update",
-        "error"
+        "error",
       );
     }
   } catch (error) {
@@ -1145,12 +1355,12 @@ async function revisitProblem() {
   } finally {
     DOM.quickActions.revisit.disabled = false;
     DOM.quickActions.revisit.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M23 4v6h-6"/>
         <path d="M1 20v-6h6"/>
         <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
       </svg>
-      Revisit (Reset)
+      Revisit
     `;
   }
 }
@@ -1172,7 +1382,6 @@ function updateAttemptDisplay() {
  * Suggests complexity based on selected tags.
  */
 function suggestComplexity() {
-  // Auto-suggestion based on common patterns
   const suggestions = [];
 
   if (selectedTags.includes("Binary Search")) {
@@ -1271,19 +1480,24 @@ async function saveSnapshot() {
 
   const cleanedCode = cleanCodeString(problemData.code);
 
-  // Check for duplicate
-  const isDuplicate = codeSnapshots.some((s) => s.code === cleanedCode);
+  const isDuplicate = codeSnapshots.some(
+    (s) => s.type !== "question" && s.code === cleanedCode,
+  );
   if (isDuplicate) {
     showStatus(DOM.save.status, "This exact code is already saved", "error");
     return;
   }
+
+  const solutionCount = codeSnapshots.filter(
+    (s) => s.type !== "question",
+  ).length;
 
   const snapshot = {
     id: Date.now().toString(),
     code: cleanedCode,
     language: problemData.language,
     timestamp: Date.now(),
-    label: `Solution ${codeSnapshots.length + 1}`,
+    label: `Solution ${solutionCount + 1}`,
   };
 
   codeSnapshots.push(snapshot);
@@ -1295,8 +1509,84 @@ async function saveSnapshot() {
     showStatus(DOM.save.status, "Solution saved!", "success");
   } catch (error) {
     console.error("Error saving snapshot:", error);
-    codeSnapshots.pop(); // Revert
+    codeSnapshots.pop();
     showStatus(DOM.save.status, "Failed to save solution", "error");
+  }
+}
+
+/**
+ * Saves question details as a special snapshot.
+ */
+async function saveQuestionDetails() {
+  if (!problemData.questionContent || !problemData.number) {
+    showStatus(
+      DOM.save.status,
+      "No question data found. Try refreshing.",
+      "error",
+    );
+    return;
+  }
+
+  // Check if question already saved
+  const hasQuestion = codeSnapshots.some((s) => s.type === "question");
+  if (hasQuestion) {
+    showStatus(DOM.save.status, "Question already saved", "error");
+    return;
+  }
+
+  // Format the question content
+  let formattedQuestion = `# ${problemData.number}. ${problemData.title}\n\n`;
+  formattedQuestion += `**Difficulty:** ${problemData.difficulty}\n\n`;
+  formattedQuestion += `## Problem\n\n`;
+
+  const descEnd = problemData.questionContent.indexOf("Example");
+  const description =
+    descEnd > 0
+      ? problemData.questionContent.substring(0, descEnd).trim()
+      : problemData.questionContent;
+  formattedQuestion += description + "\n\n";
+
+  if (problemData.examples?.length > 0) {
+    formattedQuestion += `## Examples\n\n`;
+    problemData.examples.forEach((ex) => {
+      formattedQuestion += `**Example ${ex.number}:**\n`;
+      formattedQuestion += `- Input: \`${ex.input}\`\n`;
+      formattedQuestion += `- Output: \`${ex.output}\`\n`;
+      if (ex.explanation) {
+        formattedQuestion += `- Explanation: ${ex.explanation}\n`;
+      }
+      formattedQuestion += "\n";
+    });
+  }
+
+  if (problemData.constraints?.length > 0) {
+    formattedQuestion += `## Constraints\n\n`;
+    problemData.constraints.forEach((c) => {
+      formattedQuestion += `- ${c}\n`;
+    });
+  }
+
+  const questionSnapshot = {
+    id: "question_" + Date.now().toString(),
+    type: "question",
+    code: formattedQuestion,
+    language: "markdown",
+    timestamp: Date.now(),
+    label: "Problem Statement",
+  };
+
+  // Insert at beginning so question appears first
+  codeSnapshots.unshift(questionSnapshot);
+
+  try {
+    const key = `snapshots_${problemData.number}`;
+    await chrome.storage.local.set({ [key]: codeSnapshots });
+    renderSnapshots();
+    showStatus(DOM.save.status, "Question saved!", "success");
+  } catch (error) {
+    console.error("Error saving question:", error);
+    codeSnapshots.shift();
+    showStatus(DOM.save.status, "Failed to save question", "error");
   }
 }
 
@@ -1311,7 +1601,7 @@ async function deleteSnapshot(snapshotId) {
     const key = `snapshots_${problemData.number}`;
     await chrome.storage.local.set({ [key]: codeSnapshots });
     renderSnapshots();
-    showStatus(DOM.save.status, "Solution deleted", "success");
+    showStatus(DOM.save.status, "Deleted", "success");
   } catch (error) {
     console.error("Error deleting snapshot:", error);
   }
@@ -1324,17 +1614,16 @@ async function deleteSnapshot(snapshotId) {
  */
 function showCodeModal(snapshot, index) {
   const escapedCode = snapshot.code.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const isQuestion = snapshot.type === "question";
 
   const modal = document.createElement("div");
   modal.className = "code-modal-overlay";
   modal.innerHTML = `
     <div class="code-modal">
       <div class="code-modal-header">
-        <span class="code-modal-title">${snapshot.language} - Solution ${
-    index + 1
-  }</span>
+        <span class="code-modal-title">${isQuestion ? "Problem Statement" : `${snapshot.language} - Solution ${index}`}</span>
         <button class="code-modal-close" title="Close">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"/>
             <line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
@@ -1348,7 +1637,6 @@ function showCodeModal(snapshot, index) {
 
   document.body.appendChild(modal);
 
-  // Close handlers
   modal
     .querySelector(".code-modal-close")
     .addEventListener("click", () => modal.remove());
@@ -1363,16 +1651,17 @@ function showCodeModal(snapshot, index) {
 function renderSnapshots() {
   if (!DOM.snapshots.list) return;
 
-  // Update count
   if (DOM.snapshots.count) {
     DOM.snapshots.count.textContent = codeSnapshots.length.toString();
   }
 
   if (codeSnapshots.length === 0) {
     DOM.snapshots.list.innerHTML =
-      '<p class="snapshots-empty">Click "Save Solution" above to save your code to Notion.</p>';
+      '<p class="snapshots-empty">No solutions saved yet</p>';
     return;
   }
+
+  let solutionIndex = 0;
 
   DOM.snapshots.list.innerHTML = codeSnapshots
     .map((snapshot, index) => {
@@ -1386,26 +1675,40 @@ function renderSnapshots() {
         day: "numeric",
       });
 
+      const isQuestion = snapshot.type === "question";
+
+      if (!isQuestion) {
+        solutionIndex++;
+      }
+
+      const displayIndex = isQuestion ? 0 : solutionIndex;
+
+      const icon = isQuestion
+        ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>`
+        : "";
+
       return `
-      <div class="snapshot-item" data-id="${snapshot.id}" data-index="${index}">
+      <div class="snapshot-item" data-id="${snapshot.id}" data-index="${displayIndex}" style="${isQuestion ? "border-left: 2px solid var(--accent);" : ""}">
         <div class="snapshot-header">
           <div class="snapshot-info">
-            <span class="snapshot-lang">${snapshot.language} - Solution ${
-        index + 1
-      }</span>
-            <span class="snapshot-meta">${dateStr} at ${timeStr} · ${
-        snapshot.code.split("\n").length
-      } lines</span>
+            <span class="snapshot-lang" style="${isQuestion ? "color: var(--accent);" : ""}">
+              ${icon}
+              ${isQuestion ? "Problem Statement" : `${snapshot.language} - Solution ${displayIndex}`}
+            </span>
+            <span class="snapshot-meta">${dateStr} at ${timeStr}${!isQuestion ? ` · ${snapshot.code.split("\n").length} lines` : ""}</span>
           </div>
           <div class="snapshot-actions-btns">
-            <button class="snapshot-btn preview" title="View Code" data-action="preview">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button class="snapshot-btn preview" title="View" data-action="preview">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                 <circle cx="12" cy="12" r="3"/>
               </svg>
             </button>
             <button class="snapshot-btn delete" title="Delete" data-action="delete">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3,6 5,6 21,6"/>
                 <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
               </svg>
@@ -1430,7 +1733,7 @@ function renderSnapshots() {
         deleteSnapshot(id);
       } else if (action === "preview") {
         const snapshot = codeSnapshots.find((s) => s.id === id);
-        if (snapshot) showCodeModal(snapshot, index + 1);
+        if (snapshot) showCodeModal(snapshot, index);
       }
     });
   });
@@ -1445,13 +1748,11 @@ function getSnapshotsForSave() {
 }
 
 /**
- * This loads the amount of reviews the person has left as based on the notion database.
+ * Loads the amount of reviews due.
  */
-
 async function loadDueReviewCount() {
   const { dueReviewCount } = await chrome.storage.local.get(["dueReviewCount"]);
   if (dueReviewCount > 0) {
-    // Add a badge or text showing due reviews
     const reviewBadge = document.getElementById("review-badge");
     if (reviewBadge) {
       reviewBadge.textContent = `🔔 ${dueReviewCount} problem${

@@ -1,20 +1,19 @@
 {
   "manifest_version": 3,
   "name": "Leetion - LeetCode to Notion",
-  "version": "1.1.3",
+  "version": "1.1.4",
   "description": "Save LeetCode problems and solutions directly to your Notion database.",
-  
   "browser_specific_settings": {
     "gecko": {
       "id": "neel@leetion.com",
       "strict_min_version": "112.0",
-       "data_collection_permissions": {
-              "required": ["none"]
-
-    }
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
     }
   },
-  
   "permissions": [
     "activeTab",
     "tabs",
@@ -23,13 +22,11 @@
     "alarms",
     "notifications"
   ],
-  
   "host_permissions": [
     "https://leetcode.com/*",
     "https://leetcode.cn/*",
     "https://api.notion.com/*"
   ],
-  
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -42,29 +39,35 @@
     },
     "default_title": "Leetion - Save to Notion"
   },
-  
   "content_scripts": [
     {
       "matches": [
         "https://leetcode.com/problems/*",
         "https://leetcode.cn/problems/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ],
-  
   "background": {
     "service_worker": "background.js",
-    "scripts": ["background.js"],
+    "scripts": [
+      "background.js"
+    ],
     "type": "module"
   },
-  
-  "web_accessible_resources": [{
-    "resources": ["onboarding.html"],
-    "matches": ["<all_urls>"]
-  }],
- 
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "onboarding.html"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",

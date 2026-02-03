@@ -425,14 +425,66 @@
               </button>
             </div>
           </article>
+            <article class="card card-collapsible expanded" id="card-question">
+  <div class="card-header" id="card-question-toggle">
+    <span class="form-label">Current Question</span>
+    <div class="card-actions">
+      <button
+        id="btn-refresh-question"
+        class="icon-btn-sm"
+        title="Refresh Question"
+        aria-label="Refresh question"
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M23 4v6h-6M1 20v-6h6" />
+          <path
+            d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"
+          />
+        </svg>
+      </button>
+      <svg class="collapse-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M6 9l6 6 6-6"/>
+      </svg>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="code-container">
+      <pre
+        id="question-preview"
+        class="question-preview"
+      ><code>No question detected yet...</code></pre>
+    </div>
+  </div>
+  <br/>
+  <div class="toggle-row">
+    <input
+      type="checkbox"
+      id="input-save-question"
+      class="toggle-checkbox"
+    />
+    <label for="input-save-question" class="toggle-switch"></label>
+    <span class="toggle-label">Save Question to Notion</span>
+  </div>
+</article>
+
 
           <!-- Code Preview Card -->
-          <article class="card" id="card-code">
-            <div class="card-header">
-              <span class="form-label">Current Code</span>
-              <div class="card-actions">
-                <span id="code-language" class="language-badge">--</span>
-                <button
+           <article class="card card-collapsible" id="card-code">
+  <div class="card-header" id="card-code-toggle">
+    <span class="form-label">Current Code</span>
+    <div class="card-actions">
+      <svg id="code-detected-icon" class="hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--success); margin-right: 8px;">
+        <path d="M20 6L9 17l-5-5"/>
+      </svg>
+      <span id="code-language" class="language-badge">--</span>
+             <button
                   id="btn-refresh-code"
                   class="icon-btn-sm"
                   title="Refresh code"
@@ -452,16 +504,19 @@
                     />
                   </svg>
                 </button>
-              </div>
-            </div>
-            <div class="code-container">
-              <pre
-                id="code-preview"
-                class="code-preview"
-              ><code>No code detected yet...</code></pre>
-            </div>
-            <div class="snapshot-actions">
-              <button
+      <svg class="collapse-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M6 9l6 6 6-6"/>
+      </svg>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="code-container">
+      <pre id="code-preview" class="code-preview"><code>No code detected yet...</code></pre>
+    </div>
+    <div class="snapshot-actions">
+ </div>
+  </div>
+     <button
                 type="button"
                 id="btn-snapshot"
                 class="btn-snapshot"
@@ -482,11 +537,12 @@
                   <polyline points="7,3 7,8 15,8" />
                 </svg>
                 Save Solution
-              </button>
-            </div>
-          </article>
+              </button>   
+</article>
+         
 
-          <!-- Code Snapshots Card -->
+     
+          <!-- Question Snapshot Card -->
           <article class="card" id="card-snapshots">
             <div class="card-header">
               <span class="form-label">Saved Solutions</span>

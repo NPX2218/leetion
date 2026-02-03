@@ -1,6 +1,6 @@
 {
   "name": "leetion",
-  "version": "1.0.0",
+  "version": "1.1.4",
   "description": "**LeetCode to Notion** — Save your LeetCode problems and solutions directly to your Notion database with one click.",
   "main": "background.js",
   "scripts": {
