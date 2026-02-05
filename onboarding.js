@@ -268,7 +268,7 @@ function formatDatabaseId(id) {
   if (id.length === 32) {
     return `${id.slice(0, 8)}-${id.slice(8, 12)}-${id.slice(12, 16)}-${id.slice(
       16,
-      20
+      20,
     )}-${id.slice(20)}`;
   }
   return id;
@@ -407,7 +407,7 @@ async function detectDatabaseFromTab() {
     const notionTab = tabs.findLast(
       (tab) =>
         tab.url &&
-        (tab.url.includes("notion.so") || tab.url.includes("notion.site"))
+        (tab.url.includes("notion.so") || tab.url.includes("notion.site")),
     );
 
     if (!notionTab) {

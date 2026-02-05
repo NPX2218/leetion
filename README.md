@@ -139,7 +139,7 @@ By submitting a contribution, you agree to transfer all rights to your contribut
 
 ## License
 
-Copyright (c) 2025 Neel Bansal. All Rights Reserved.
+Copyright (c) 2026 Neel Bansal. All Rights Reserved.
 
 This software and its source code are proprietary. You may NOT:
 

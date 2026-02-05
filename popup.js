@@ -5,7 +5,7 @@
  * Handles UI interactions, data scraping, and communication with background script.
  *
  * @author Leetion
- * @version 1.1.4
+ * @version 1.1.5
  */
 
 // CONFIGURATION & CONSTANTS
@@ -873,16 +873,20 @@ async function checkExistingEntry() {
         if (response.spaceComplexity && DOM.complexity.space) {
           DOM.complexity.space.value = response.spaceComplexity;
         }
-        
+
         // If question exists in Notion, check the toggle so we don't wipe it on save
         if (response.hasQuestion && DOM.problem.saveQuestionToggle) {
-            DOM.problem.saveQuestionToggle.checked = true;
+          DOM.problem.saveQuestionToggle.checked = true;
         }
       } else {
         // If we have local state, we rely on that, BUT if local state didn't track the toggle (old version)
         // verify against Notion.
-        if (response.hasQuestion && DOM.problem.saveQuestionToggle && !localState[formStateKey].hasOwnProperty('saveQuestion')) {
-             DOM.problem.saveQuestionToggle.checked = true;
+        if (
+          response.hasQuestion &&
+          DOM.problem.saveQuestionToggle &&
+          !localState[formStateKey].hasOwnProperty("saveQuestion")
+        ) {
+          DOM.problem.saveQuestionToggle.checked = true;
         }
       }
 
@@ -926,7 +930,6 @@ async function saveToNotion() {
     console.log("Leetion: Sending spacedRepetitionDays:", spacedRepDays);
 
     const snapshotsToSave = getSnapshotsForSave();
-
 
     let description = problemData.questionContent || "";
     const descEnd = description.indexOf("Example");

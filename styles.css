@@ -1238,3 +1238,20 @@ body {
 .card-collapsible.expanded .collapse-icon {
   transform: rotate(180deg);
 }
+
+.popup-footer {
+  padding: 20px 40px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+.popup-footer a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.popup-footer a:hover {
+  text-decoration: underline;
+}

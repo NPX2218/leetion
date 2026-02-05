@@ -4,7 +4,7 @@
  * Handles Notion API communications for saving/updating problems.
  *
  * @author Leetion
- * @version 1.1.4
+ * @version 1.1.5
  */
 
 // CONFIGURATION
@@ -351,9 +351,9 @@ async function getPageContent(apiKey, pageId) {
       if (block.type === "heading_2") {
         const heading = block.heading_2?.rich_text?.[0]?.plain_text || "";
         currentSection = heading.toLowerCase();
-        
+
         if (heading === "Question") {
-            content.hasQuestion = true;
+          content.hasQuestion = true;
         }
         continue;
       }
@@ -431,7 +431,13 @@ async function saveToNotion(data) {
 
     if (existingPageId) {
       // UPDATE existing page
-      const updateResult = await updatePageContent(apiKey, existingPageId, databaseId, problem, spacedRepetitionDays);
+      const updateResult = await updatePageContent(
+        apiKey,
+        existingPageId,
+        databaseId,
+        problem,
+        spacedRepetitionDays,
+      );
       pageId = updateResult.pageId;
       return updateResult;
     } else {
@@ -452,11 +458,21 @@ async function saveToNotion(data) {
   }
 }
 
-async function updatePageContent(apiKey, existingPageId, databaseId, problem, spacedRepetitionDays) {
+async function updatePageContent(
+  apiKey,
+  existingPageId,
+  databaseId,
+  problem,
+  spacedRepetitionDays,
+) {
   try {
     const cleanedCode = cleanCode(problem.code);
-    const properties = buildProperties(problem, existingPageId, spacedRepetitionDays);
-    
+    const properties = buildProperties(
+      problem,
+      existingPageId,
+      spacedRepetitionDays,
+    );
+
     // Always update properties (Tags, Status, etc.)
     await notionRequest(`pages/${existingPageId}`, apiKey, "PATCH", {
       properties,
@@ -472,24 +488,34 @@ async function updatePageContent(apiKey, existingPageId, databaseId, problem, sp
 
     if (hasNewContent) {
       // Build the FULL intended content structure
-      const intendedChildren = buildPageContent({ ...problem, code: cleanedCode });
-      
+      const intendedChildren = buildPageContent({
+        ...problem,
+        code: cleanedCode,
+      });
+
       // Smart Overwrite:
       // 1. Fetch existing blocks
       // 2. Identify if "Question" section exists
       // 3. If "Question" exists and we are saving question -> Skip deleting it, Skip creating it
-      
-      const { blocksToDelete, blocksToCreate } = await prepareSmartUpdate(apiKey, existingPageId, intendedChildren, problem.saveQuestion);
+
+      const { blocksToDelete, blocksToCreate } = await prepareSmartUpdate(
+        apiKey,
+        existingPageId,
+        intendedChildren,
+        problem.saveQuestion,
+      );
 
       if (blocksToDelete.length > 0) {
-          await deleteBlocksList(apiKey, blocksToDelete);
+        await deleteBlocksList(apiKey, blocksToDelete);
       }
-      
+
       if (blocksToCreate.length > 0) {
         await appendBlocksInBatches(apiKey, existingPageId, blocksToCreate);
       }
-      
-      console.log(`Leetion: Updated page. Deleted ${blocksToDelete.length}, Created ${blocksToCreate.length}`);
+
+      console.log(
+        `Leetion: Updated page. Deleted ${blocksToDelete.length}, Created ${blocksToCreate.length}`,
+      );
     } else {
       console.log(
         "Leetion: No snapshots/notes, preserved existing page content",
@@ -533,9 +559,14 @@ async function createPage(apiKey, databaseId, properties, children) {
   return pageId;
 }
 
-async function prepareSmartUpdate(apiKey, pageId, intendedChildren, saveQuestion) {
+async function prepareSmartUpdate(
+  apiKey,
+  pageId,
+  intendedChildren,
+  saveQuestion,
+) {
   try {
-     // Get all blocks
+    // Get all blocks
     let allBlocks = [];
     let cursor = undefined;
     do {
@@ -546,78 +577,85 @@ async function prepareSmartUpdate(apiKey, pageId, intendedChildren, saveQuestion
       allBlocks = allBlocks.concat(response.results || []);
       cursor = response.has_more ? response.next_cursor : undefined;
     } while (cursor);
-    
+
     // Find Headers
     // Notion API returns block objects. We check type and content.
     // Heading 2 is "heading_2". Content is in "rich_text".
-    
+
     let questionHeaderIndex = -1;
     let solutionsHeaderIndex = -1;
-    
+
     for (let i = 0; i < allBlocks.length; i++) {
-        const b = allBlocks[i];
-        if (b.type === 'heading_2') {
-            const text = b.heading_2?.rich_text?.[0]?.plain_text || "";
-            if (text === "Question") questionHeaderIndex = i;
-            if (text === "Solution(s)") solutionsHeaderIndex = i;
-        }
+      const b = allBlocks[i];
+      if (b.type === "heading_2") {
+        const text = b.heading_2?.rich_text?.[0]?.plain_text || "";
+        if (text === "Question") questionHeaderIndex = i;
+        if (text === "Solution(s)") solutionsHeaderIndex = i;
+      }
     }
-    
+
     // Logic:
     // If we are Saving Question, and Question Header Exists, and Solution Header Exists (so we know where it ends):
     // Then we KEEP everything before "Solution(s)".
     // We DELETE "Solution(s)" and everything after.
     // We CREATE only the "Solution(s)" part of intendedChildren.
-    
-    if (saveQuestion && questionHeaderIndex !== -1 && solutionsHeaderIndex !== -1 && solutionsHeaderIndex > questionHeaderIndex) {
-        console.log("Leetion: Smart Update - Preserving Question Section");
-        
-        // Find split point in Intended Children
-        // intendedChildren is an array of block objects we created in buildPageContent
-        let intendedSplitIndex = -1;
-         for (let i = 0; i < intendedChildren.length; i++) {
-            const b = intendedChildren[i];
-            if (b.type === 'heading_2' && b.heading_2?.rich_text?.[0]?.text?.content === "Solution(s)") {
-                intendedSplitIndex = i;
-                break;
-            }
+
+    if (
+      saveQuestion &&
+      questionHeaderIndex !== -1 &&
+      solutionsHeaderIndex !== -1 &&
+      solutionsHeaderIndex > questionHeaderIndex
+    ) {
+      console.log("Leetion: Smart Update - Preserving Question Section");
+
+      // Find split point in Intended Children
+      // intendedChildren is an array of block objects we created in buildPageContent
+      let intendedSplitIndex = -1;
+      for (let i = 0; i < intendedChildren.length; i++) {
+        const b = intendedChildren[i];
+        if (
+          b.type === "heading_2" &&
+          b.heading_2?.rich_text?.[0]?.text?.content === "Solution(s)"
+        ) {
+          intendedSplitIndex = i;
+          break;
         }
-        
-        if (intendedSplitIndex !== -1) {
-             return {
-                blocksToDelete: allBlocks.slice(solutionsHeaderIndex), // Delete starting from "Solution(s)"
-                blocksToCreate: intendedChildren.slice(intendedSplitIndex) // Add starting from "Solution(s)"
-            };
-        }
+      }
+
+      if (intendedSplitIndex !== -1) {
+        return {
+          blocksToDelete: allBlocks.slice(solutionsHeaderIndex), // Delete starting from "Solution(s)"
+          blocksToCreate: intendedChildren.slice(intendedSplitIndex), // Add starting from "Solution(s)"
+        };
+      }
     }
-    
+
     // Default: Delete everything, Create everything
     return {
-        blocksToDelete: allBlocks,
-        blocksToCreate: intendedChildren
+      blocksToDelete: allBlocks,
+      blocksToCreate: intendedChildren,
     };
-    
-  } catch(e) {
-      console.error("Error in smart update prep", e);
-      // Fallback
-      return { blocksToDelete: [], blocksToCreate: intendedChildren }; 
+  } catch (e) {
+    console.error("Error in smart update prep", e);
+    // Fallback
+    return { blocksToDelete: [], blocksToCreate: intendedChildren };
   }
 }
 
 async function deleteBlocksList(apiKey, blocks) {
-    // Delete in parallel batches. Since we have retry logic, we can be more aggressive.
-    // Notion rate limit is ~3 req/sec. With retry, we can burst more.
-    const PARALLEL_BATCH = 25;
-    for (let i = 0; i < blocks.length; i += PARALLEL_BATCH) {
-      const batch = blocks.slice(i, i + PARALLEL_BATCH);
-      await Promise.all(
-        batch.map((block) =>
-          notionRequest(`blocks/${block.id}`, apiKey, "DELETE"),
-        ),
-      );
-      // Minimal delay to allow other tasks or simple pacing, but rely on retry for backoff
-      if (i + PARALLEL_BATCH < blocks.length) await sleep(20);
-    }
+  // Delete in parallel batches. Since we have retry logic, we can be more aggressive.
+  // Notion rate limit is ~3 req/sec. With retry, we can burst more.
+  const PARALLEL_BATCH = 25;
+  for (let i = 0; i < blocks.length; i += PARALLEL_BATCH) {
+    const batch = blocks.slice(i, i + PARALLEL_BATCH);
+    await Promise.all(
+      batch.map((block) =>
+        notionRequest(`blocks/${block.id}`, apiKey, "DELETE"),
+      ),
+    );
+    // Minimal delay to allow other tasks or simple pacing, but rely on retry for backoff
+    if (i + PARALLEL_BATCH < blocks.length) await sleep(20);
+  }
 }
 
 /**
@@ -671,13 +709,18 @@ async function notionRequest(endpoint, apiKey, method, body = null) {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || `API error: ${response.status} - ${result.code}`);
+        throw new Error(
+          result.message || `API error: ${response.status} - ${result.code}`,
+        );
       }
 
       return result;
     } catch (error) {
       if (attempt === MAX_RETRIES - 1) throw error; // Re-throw on last attempt
-      console.warn(`Leetion: Request failed (attempt ${attempt + 1}). Retrying...`, error);
+      console.warn(
+        `Leetion: Request failed (attempt ${attempt + 1}). Retrying...`,
+        error,
+      );
       await sleep(1000 * Math.pow(2, attempt)); // Exponential backoff for other errors
       attempt++;
     }
@@ -842,16 +885,14 @@ function buildPageContent(problem) {
   if (problem.saveQuestion && problem.questionContent?.content) {
     blocks.push(createHeading("Question"));
 
-
-
     // Use trimmed description from popup if available, otherwise try to trim here
     let description = problem.questionContent.description;
     if (!description && problem.questionContent.content) {
-       description = problem.questionContent.content;
-       const exampleIndex = description.search(/Example\s*\d+|Example\s*:/i);
-       if (exampleIndex > 0) {
-         description = description.substring(0, exampleIndex).trim();
-       }
+      description = problem.questionContent.content;
+      const exampleIndex = description.search(/Example\s*\d+|Example\s*:/i);
+      if (exampleIndex > 0) {
+        description = description.substring(0, exampleIndex).trim();
+      }
     }
 
     // Description text (limit to reasonable length if it's huge, though splitRichText handles blocks)
@@ -879,7 +920,7 @@ function buildPageContent(problem) {
           blocks.push(createParagraph("Explanation:"));
           blocks.push(createQuoteBlock(ex.explanation));
         }
-        
+
         // Add a spacer (empty paragraph) between examples
         blocks.push(createParagraph(""));
       });
@@ -909,7 +950,7 @@ function buildPageContent(problem) {
     for (let i = 0; i < problem.snapshots.length; i++) {
       const snapshot = problem.snapshots[i];
       // Skip question snapshots if we are using the new toggle method
-      if (snapshot.type === 'question') continue;
+      if (snapshot.type === "question") continue;
 
       const snapshotLang = LANGUAGE_MAP[snapshot.language] || "plain text";
       const date = new Date(snapshot.timestamp);
@@ -1036,13 +1077,13 @@ function parseNotesToBlocks(notes) {
       }
     } else {
       // Regular text line. Append to buffer.
-      // If adding this line exceeds Notion limit (extremely rare for single updates), 
+      // If adding this line exceeds Notion limit (extremely rare for single updates),
       // createRichParagraphBlocks will handle splitting later.
       // We add a space if buffer not empty to preserve word separation (though markdown usually needs 2 spaces or newline)
-      // Notion treats newline in paragraph as shift+enter. 
+      // Notion treats newline in paragraph as shift+enter.
       // User requested "group them up". Let's join with \n to keep visual structure but single block.
       if (currentTextBuffer) {
-        // Check if adding more would explode the buffer too much? 
+        // Check if adding more would explode the buffer too much?
         // createRichParagraphBlocks handles splitting, so we can just accumulate.
         currentTextBuffer += "\n" + trimmed;
       } else {
@@ -1050,7 +1091,7 @@ function parseNotesToBlocks(notes) {
       }
     }
   }
-  
+
   // Final flush
   flushBuffer();
 
@@ -1106,7 +1147,9 @@ function createBoldParagraph(text) {
     object: "block",
     type: "paragraph",
     paragraph: {
-      rich_text: [{ type: "text", text: { content: text }, annotations: { bold: true } }],
+      rich_text: [
+        { type: "text", text: { content: text }, annotations: { bold: true } },
+      ],
     },
   };
 }
